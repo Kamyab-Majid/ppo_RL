@@ -43,6 +43,12 @@ save_iteration = 1000
 state = envs.reset()
 early_stop = False
 
+
+def trch_ft_device(input, device):
+    output = torch.FloatTensor(input).to(device)
+    return output
+
+
 while frame_idx < max_frames and not early_stop:
 
     log_probs = []
@@ -54,7 +60,7 @@ while frame_idx < max_frames and not early_stop:
     entropy = 0
 
     for _ in range(num_steps):
-        state = torch.FloatTensor(state).to(device)
+        state = trch_ft_device(state, device)
         dist, value = model(state)
 
         action = dist.sample()
@@ -80,7 +86,7 @@ while frame_idx < max_frames and not early_stop:
             if test_reward > threshold_reward:
                 early_stop = True
 
-    next_state = torch.FloatTensor(next_state).to(device)
+    next_state = trch_ft_device(next_state, device)
     _, next_value = model(next_state)
     returns = my_ppo.compute_gae(next_value, rewards, masks, values)
 
@@ -92,13 +98,13 @@ while frame_idx < max_frames and not early_stop:
     advantage = returns - values
 
     my_ppo.ppo_update(ppo_epochs, mini_batch_size, states, actions, log_probs,
-                   returns, advantage, optimizer)
+                      returns, advantage, optimizer)
 
 
 max_expert_num = 50000
 num_steps = 0
 expert_traj = []
-
+# building an episode based on the current model.
 for i_episode in count():
     state = env.reset()
     done = False
