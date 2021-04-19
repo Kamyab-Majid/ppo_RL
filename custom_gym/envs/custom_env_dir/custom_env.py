@@ -63,6 +63,8 @@ class CustomEnv(gym.Env, ABC):
 
     def step(self, current_action):
         # checking if the no_timesteps is met
+        current_action = np.array(current_action)
+        current_action = np.tanh(current_action)
         if self.counter >= self.no_timesteps-2:
             self.done = True
             print(self.done)
@@ -105,7 +107,7 @@ class CustomEnv(gym.Env, ABC):
             if current_num_step < self.no_timesteps - 10:
                 self.all_rewards[self.counter] = reward = reward - 7 * (1 - current_num_step / self.no_timesteps)
             if current_total_reward > self.best_reward and sum(self.all_rewards) != 0:
-                if current_num_step > self.longest_num_step:
+                if current_num_step >= self.longest_num_step:
                     self.longest_num_step = current_num_step
                     self.best_reward = sum(self.all_rewards)
                     np.savetxt(
@@ -123,7 +125,6 @@ class CustomEnv(gym.Env, ABC):
 
     def reset(self):
         # initialization
-        self.longest_num_step = 0
         self.all_obs = np.zeros((self.no_timesteps, len(self.high_range)))
         self.all_actions = np.zeros((self.no_timesteps, len(self.high_action_space)))
         self.all_rewards = np.zeros((self.no_timesteps, 1))
