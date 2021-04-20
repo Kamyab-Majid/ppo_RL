@@ -7,7 +7,8 @@ from neural_network import ActorCritic
 from ppo_method import ppo
 from common.multiprocessing_env import SubprocVecEnv
 from itertools import count
-
+from datetime import datetime
+import os
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -49,6 +50,12 @@ def trch_ft_device(input, device):
     return output
 
 
+date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
+current_dir = os.getcwd()
+directory = f'results/model{date}'
+path = os.path.join(current_dir, directory)
+if not os.path.exists(path):
+    os.mkdir(path)
 while frame_idx < max_frames and not early_stop:
 
     log_probs = []
@@ -85,6 +92,9 @@ while frame_idx < max_frames and not early_stop:
             plot(frame_idx, test_rewards)
             if test_reward > threshold_reward:
                 early_stop = True
+        date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
+        torch.save(model.state_dict(), f'{path}/model{date}.pt')
+        
 
     next_state = trch_ft_device(next_state, device)
     _, next_value = model(next_state)
@@ -99,6 +109,7 @@ while frame_idx < max_frames and not early_stop:
 
     my_ppo.ppo_update(ppo_epochs, mini_batch_size, states, actions, log_probs,
                       returns, advantage, optimizer)
+    
 
 
 max_expert_num = 50000
