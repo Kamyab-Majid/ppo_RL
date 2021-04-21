@@ -2,18 +2,17 @@ import gym
 import numpy as np
 import torch
 import torch.optim as optim
-from utils import make_env, plot
+from utils import make_env, plot, save_files
 from neural_network import ActorCritic
 from ppo_method import ppo
 from common.multiprocessing_env import SubprocVecEnv
 from itertools import count
-from datetime import datetime
-import os
+
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 
-num_envs = 1
+num_envs = 8
 env_name = "CustomEnv-v0"
 
 
@@ -25,22 +24,23 @@ num_inputs = envs.observation_space.shape[0]
 num_outputs = envs.action_space.shape[0]
 
 # Hyper params:
-hidden_size = 256
+hidden_size = 400
 lr = 3e-6
 num_steps = 20
 mini_batch_size = 5
 ppo_epochs = 4
-threshold_reward = -200
+threshold_reward = -0.01
 
 model = ActorCritic(num_inputs, num_outputs, hidden_size).to(device)
 env = gym.make(env_name)
 
 my_ppo = ppo(model, env)
 optimizer = optim.Adam(model.parameters(), lr=lr)
-max_frames = 15000
+max_frames = 1_500_0000
 frame_idx = 0
 test_rewards = []
 save_iteration = 1000
+model_save_iteration = 10000
 state = envs.reset()
 early_stop = False
 
@@ -50,12 +50,8 @@ def trch_ft_device(input, device):
     return output
 
 
-date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
-current_dir = os.getcwd()
-directory = f'results/model{date}'
-path = os.path.join(current_dir, directory)
-if not os.path.exists(path):
-    os.mkdir(path)
+saver_model = save_files()
+
 while frame_idx < max_frames and not early_stop:
 
     log_probs = []
@@ -92,10 +88,8 @@ while frame_idx < max_frames and not early_stop:
             plot(frame_idx, test_rewards)
             if test_reward > threshold_reward:
                 early_stop = True
-        date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
-        torch.save(model.state_dict(), f'{path}/model{date}.pt')
-        
-
+            if frame_idx % model_save_iteration == 0:
+                saver_model.model_save(model)
     next_state = trch_ft_device(next_state, device)
     _, next_value = model(next_state)
     returns = my_ppo.compute_gae(next_value, rewards, masks, values)
@@ -107,10 +101,7 @@ while frame_idx < max_frames and not early_stop:
     actions = torch.cat(actions)
     advantage = returns - values
 
-    my_ppo.ppo_update(ppo_epochs, mini_batch_size, states, actions, log_probs,
-                      returns, advantage, optimizer)
-    
-
+    my_ppo.ppo_update(ppo_epochs, mini_batch_size, states, actions, log_probs, returns, advantage, optimizer)
 
 max_expert_num = 50000
 num_steps = 0
