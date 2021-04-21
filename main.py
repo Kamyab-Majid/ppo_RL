@@ -12,7 +12,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 
-num_envs = 8
+num_envs = 2
 env_name = "CustomEnv-v0"
 
 

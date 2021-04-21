@@ -5,10 +5,8 @@ import gym
 from gym import spaces
 from env.Helicopter import Helicopter
 from env.controller import Controller
-from datetime import datetime
-import csv
-import os
 from utils import save_files
+
 
 class CustomEnv(gym.Env, ABC):
     def __init__(self):
@@ -81,6 +79,7 @@ class CustomEnv(gym.Env, ABC):
         act_header = str(list(self.action_space_domain.keys()))[1:-1]
         self.header = "time, " + act_header + ", " + obs_header + ", reward" + ", control reward"
         self.saver = save_files()
+        self.reward_array = np.array((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), dtype=np.float32)
 
     def step(self, current_action):
         # checking if the no_timesteps is met
@@ -103,12 +102,16 @@ class CustomEnv(gym.Env, ABC):
             )
             # finding observation
             self.all_obs[self.counter] = observation = list(self.current_states)
-            error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
-            self.all_rewards[self.counter] = self.control_rewards[self.counter] = error
         except OverflowError or ValueError or IndexError:
             self.jj = 1
         # finding the reward (error based on error-error_sm)
-        reward = error
+        error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
+        self.control_rewards[self.counter] = error
+        for i in range(12):
+            
+            self.reward_array[i] = abs((self.current_states[i]) / max(abs(self.all_obs[:self.counter + 1, i])))
+        reward = self.all_rewards[self.counter] = -sum(self.reward_array)
+        print(reward)
 
         # check to see if it is diverged
         bool_1 = any(np.isnan(self.current_states))
@@ -127,7 +130,9 @@ class CustomEnv(gym.Env, ABC):
             current_num_step = np.count_nonzero(self.all_rewards)
             current_total_reward = sum(self.all_rewards)
             if current_num_step > 10:
-                self.saver.reward_step_save(self.best_reward, self.longest_num_step, current_total_reward, current_num_step)
+                self.saver.reward_step_save(
+                    self.best_reward, self.longest_num_step, current_total_reward, current_num_step
+                )
             # if current_num_step < self.no_timesteps - 10:
             #     self.all_rewards[self.counter] = reward = reward - 7 * (1 - current_num_step / self.no_timesteps)
             if current_num_step >= self.longest_num_step:
@@ -135,9 +140,12 @@ class CustomEnv(gym.Env, ABC):
             if current_total_reward > self.best_reward and sum(self.all_rewards) != 0:
                 self.best_reward = sum(self.all_rewards)
                 self.saver.best_reward_save(
-                    self.all_t, self.all_actions, self.all_obs, self.all_rewards, self.control_rewards, self.header)
+                    self.all_t, self.all_actions, self.all_obs, self.all_rewards, self.control_rewards, self.header
+                )
 
         self.counter += 1
+        if current_t < 1:
+            reward = 0
         return observation, float(reward), self.done, {}
 
     def reset(self):
