@@ -56,10 +56,10 @@ class CustomEnv(gym.Env, ABC):
         self.high_obs_space = np.array(list(zip(*self.observation_space_domain.values()))[1], dtype=np.float32)
         self.observation_space = spaces.Box(low=self.low_obs_space, high=self.high_obs_space, dtype=np.float32)
         self.action_space_domain = {
-            "deltacol": (-0.2, 1.2),
-            "deltalat": (-0.2, 1.2),
-            "deltalon": (-0.2, 1.2),
-            "deltaped": (-0.2, 1.2),
+            "deltacol": (-0.3, 0.3),
+            "deltalat": (-0.3, 0.3),
+            "deltalon": (-0.3, 0.3),
+            "deltaped": (-0.3, 0.3),
             # "f1": (0.1, 5), "f2": (0.5, 20), "f3": (0.5, 20), "f4": (0.5, 10),
             # "lambda1": (0.5, 10), "lambda2": (0.1, 5), "lambda3": (0.1, 5), "lambda4": (0.1, 5),
             # "eta1": (0.2, 5), "eta2": (0.1, 5), "eta3": (0.1, 5), "eta4": (0.1, 5),
@@ -67,11 +67,11 @@ class CustomEnv(gym.Env, ABC):
         self.low_action_space = np.array(list(zip(*self.action_space_domain.values()))[0], dtype=np.float32)
         self.high_action_space = np.array(list(zip(*self.action_space_domain.values()))[1], dtype=np.float32)
         self.action_space = spaces.Box(low=self.low_action_space, high=self.high_action_space, dtype=np.float32)
-        self.t_start, self.dt, self.t_end = 0, 0.01, 10
+        self.t_start, self.dt, self.t_end = 0, 0.001, 10
         self.no_timesteps = int((self.t_end - self.t_start) / self.dt)
         self.all_t = np.linspace(self.t_start, self.t_end, self.no_timesteps)
         self.counter = 0
-        self.best_reward = -10000000
+        self.best_reward = -100_000_000
         self.counter_max = 0
         self.estim_per_step = 100
         self.longest_num_step = 0
@@ -83,14 +83,15 @@ class CustomEnv(gym.Env, ABC):
 
     def step(self, current_action):
         # checking if the no_timesteps is met
-        current_action = np.array(current_action)
-        current_action = np.tanh(current_action)
-        if self.counter >= self.no_timesteps - 2:
+        if self.counter >= self.no_timesteps - 1:
             self.done = True
             print(self.done)
+        # calculating the action
+        current_action = np.array(current_action) / 300
+        self.control_input += current_action
+        self.all_actions[self.counter] = self.control_input
+
         # finding the new states
-        control_input = self.current_action = tuple((current_action + 0.7) / 1.5)
-        self.all_actions[self.counter] = self.current_action
         current_t = self.dt * self.counter
         try:
             self.current_states = self.My_helicopter.RK45(
@@ -98,43 +99,42 @@ class CustomEnv(gym.Env, ABC):
                 self.current_states,
                 self.symbolic_states_math,
                 self.dt,
-                control_input,
+                self.control_input,
             )
+
             # finding observation
             self.all_obs[self.counter] = observation = list(self.current_states)
         except OverflowError or ValueError or IndexError:
             self.jj = 1
+
         # finding the reward (error based on error-error_sm)
         error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
         self.control_rewards[self.counter] = error
         for i in range(12):
-            
-            self.reward_array[i] = abs((self.current_states[i]) / max(abs(self.all_obs[:self.counter + 1, i])))
+            self.reward_array[i] = abs((self.current_states[i]) / max(abs(self.all_obs[: self.counter + 1, i])))
         reward = self.all_rewards[self.counter] = -sum(self.reward_array)
-        print(reward)
 
         # check to see if it is diverged
         bool_1 = any(np.isnan(self.current_states))
         bool_2 = any(np.isinf(self.current_states))
         if bool_1 or bool_2:
             self.jj = 3
-        if self.jj > 0 or max(abs(self.current_states)) > 100:
-            print(self.jj)
+        if self.jj > 0 or max(abs(self.current_states)) > 200:
+            # print(self.jj)
             observation = self.all_obs[self.counter - 1]
             self.done = True
             self.counter -= 1
-            reward += -10
+            reward = -100_000_000 + 100_000_000 * (self.no_timesteps - np.count_nonzero(self.all_rewards)) / self.no_timesteps
             self.all_rewards[self.counter] = reward
-        if self.done:
 
+        # done jobs
+        if self.done:
             current_num_step = np.count_nonzero(self.all_rewards)
             current_total_reward = sum(self.all_rewards)
             if current_num_step > 10:
                 self.saver.reward_step_save(
                     self.best_reward, self.longest_num_step, current_total_reward, current_num_step
                 )
-            # if current_num_step < self.no_timesteps - 10:
-            #     self.all_rewards[self.counter] = reward = reward - 7 * (1 - current_num_step / self.no_timesteps)
             if current_num_step >= self.longest_num_step:
                 self.longest_num_step = current_num_step
             if current_total_reward > self.best_reward and sum(self.all_rewards) != 0:
@@ -144,8 +144,6 @@ class CustomEnv(gym.Env, ABC):
                 )
 
         self.counter += 1
-        if current_t < 1:
-            reward = 0
         return observation, float(reward), self.done, {}
 
     def reset(self):
@@ -154,6 +152,7 @@ class CustomEnv(gym.Env, ABC):
         self.all_actions = np.zeros((self.no_timesteps, len(self.high_action_space)))
         self.all_rewards = np.zeros((self.no_timesteps, 1))
         self.control_rewards = np.zeros((self.no_timesteps, 1))
+        self.control_input = np.array((0, 0, 0, 0), dtype=np.float32)
         self.jj = 0
         self.counter = 0
         # Yd, Ydotd, Ydotdotd, Y, Ydot = self.My_controller.Yposition(0, self.current_states)

@@ -13,6 +13,7 @@ from torch.distributions import Normal
 from IPython.display import clear_output
 import matplotlib.pyplot as plt
 
+
 class ActorCritic(nn.Module):
     def __init__(self, num_inputs, num_outputs, hidden_size, std=0.0):
         super(ActorCritic, self).__init__()

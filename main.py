@@ -40,7 +40,7 @@ max_frames = 1_500_0000
 frame_idx = 0
 test_rewards = []
 save_iteration = 1000
-model_save_iteration = 10000
+model_save_iteration = 30000
 state = envs.reset()
 early_stop = False
 
@@ -85,7 +85,7 @@ while frame_idx < max_frames and not early_stop:
         if frame_idx % save_iteration == 0:
             test_reward = np.mean([my_ppo.test_env() for _ in range(num_envs)])
             test_rewards.append(test_reward)
-            plot(frame_idx, test_rewards)
+            # plot(frame_idx, test_rewards)
             if test_reward > threshold_reward:
                 early_stop = True
             if frame_idx % model_save_iteration == 0:

@@ -38,6 +38,11 @@ class save_files:
         self._save_init(self.path_step_reward)
         self._save_init(self.path_best_reward)
         self._save_init(self.path_model)
+        self.index = 1
+        fields = ['counter', 'step', 'reward']
+        with open(f"{self.path_step_reward}/reward_step{self.date}.csv", "a") as f:
+            writer = csv.writer(f)
+            writer.writerow(fields)
 
     def _save_init(self, directory):
         self.path = os.path.join(self.current_dir, directory)
@@ -55,10 +60,11 @@ class save_files:
 
     def reward_step_save(self, best_rew, longest_step, curr_tot_rew, curr_step):
         print(f"best reward: {best_rew}, longest step: {longest_step}, reward: {curr_tot_rew}, step: {curr_step} ")
-        fields = [curr_step, float(curr_tot_rew)]
+        fields = [self.index, curr_step, float(curr_tot_rew)]
         with open(f"{self.path_step_reward}/reward_step{self.date}.csv", "a") as f:
             writer = csv.writer(f)
             writer.writerow(fields)
+        self.index += 1
 
     def model_save(self, model):
         date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
