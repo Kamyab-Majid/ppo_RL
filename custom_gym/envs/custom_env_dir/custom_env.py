@@ -33,7 +33,7 @@ class CustomEnv(gym.Env, ABC):
         self.My_controller = Controller()
         self.t = sp.symbols("t")
         self.symbolic_states_math, jacobian = self.My_helicopter.lambd_eq_maker(self.t, self.x_state, self.U_input)
-        default_range = (-100, 100)
+        self.default_range = default_range = (-200, 200)
         self.observation_space_domain = {
             "u_velocity": default_range,
             "v_velocity": default_range,
@@ -111,22 +111,18 @@ class CustomEnv(gym.Env, ABC):
         error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
         self.control_rewards[self.counter] = error
         for i in range(12):
-            self.reward_array[i] = abs((self.current_states[i]) / max(abs(self.all_obs[: self.counter + 1, i])))
-        reward = self.all_rewards[self.counter] = -sum(self.reward_array)
+            self.reward_array[i] = abs(self.current_states[i]) / self.default_range[1]
+        reward = self.all_rewards[self.counter] = -sum(self.reward_array) + 0.05
 
         # check to see if it is diverged
         bool_1 = any(np.isnan(self.current_states))
         bool_2 = any(np.isinf(self.current_states))
         if bool_1 or bool_2:
             self.jj = 3
-        if self.jj > 0 or max(abs(self.current_states)) > 200:
+        if self.jj > 0 or max(abs(self.current_states)) > self.default_range[1]:
             # print(self.jj)
             observation = self.all_obs[self.counter - 1]
             self.done = True
-            self.counter -= 1
-            reward = -100_000_000 + 100_000_000 * (self.no_timesteps - np.count_nonzero(self.all_rewards)) / self.no_timesteps
-            self.all_rewards[self.counter] = reward
-
         # done jobs
         if self.done:
             current_num_step = np.count_nonzero(self.all_rewards)
