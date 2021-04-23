@@ -67,7 +67,7 @@ class CustomEnv(gym.Env, ABC):
         self.low_action_space = np.array(list(zip(*self.action_space_domain.values()))[0], dtype=np.float32)
         self.high_action_space = np.array(list(zip(*self.action_space_domain.values()))[1], dtype=np.float32)
         self.action_space = spaces.Box(low=self.low_action_space, high=self.high_action_space, dtype=np.float32)
-        self.t_start, self.dt, self.t_end = 0, 0.001, 10
+        self.t_start, self.dt, self.t_end = 0, 0.001, 2
         self.no_timesteps = int((self.t_end - self.t_start) / self.dt)
         self.all_t = np.linspace(self.t_start, self.t_end, self.no_timesteps)
         self.counter = 0
@@ -87,8 +87,10 @@ class CustomEnv(gym.Env, ABC):
             self.done = True
             print(self.done)
         # calculating the action
-        current_action = np.array(current_action) / 300
-        self.control_input += current_action
+        # current_action = np.array(current_action) / 50
+        # self.control_input += current_action
+        current_action = np.array(current_action)
+        self.control_input = current_action
         self.all_actions[self.counter] = self.control_input
 
         # finding the new states

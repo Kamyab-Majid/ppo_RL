@@ -69,3 +69,7 @@ class save_files:
     def model_save(self, model):
         date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
         torch.save(model.state_dict(), f"{self.path_model}/model{date}.pt")
+    
+    def custom_save(save_directory)
+
+
