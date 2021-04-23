@@ -13,7 +13,7 @@ class state_finder:
 # ENV_ID = "CartPole-v0"
         self.env = gym.make(self.ENV_ID)
         self.env.current_states = self.env.reset()
-    def get_action(self,current_states,sl_action=[1, 10, 10, 5, 5, 1, 1, 2, 2, 1, 1, 1, 1]):
+    def get_action(self, current_states, sl_action=[1, 10, 10, 5, 5, 1, 1, 2, 2, 1, 1, 1, 1]):
         action = self.my_contr.Controller_model(current_states, self.env.dt * self.env.counter,sl_action)
         return action
 # obs = [0,0,0,0,0,0,0,0]

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from neural_network import ActorCritic
+from init_actor_critic import ActorCritic
 from finding_random_states_and_actions import state_finder
 
 # create dummy data for training
@@ -45,7 +45,8 @@ for epoch in range(epochs):
     optimizer.zero_grad()
 
     # get output from the model, given the inputs
-    outputs = model(inputs)
+    outputs, value = model(inputs)
+
 
     # get loss for the predicted output
     loss = criterion(outputs, labels)
