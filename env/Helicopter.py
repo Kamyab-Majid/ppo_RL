@@ -29,7 +29,7 @@ class Helicopter:
         self.CH = np.array([47/450	, 0, 12/25, 32/225, 1/30, 6/25])
         self.CT = np.array([-1/150	, 0, 3/100, -16/75, -1/20, 6/25])
 
-    def RK45(self, x0, y0, ydot, h, u_input, trunc_error=False):
+    def RK45(self, x0, y0, ydot, h, u_input, trunc_error=False) -> np.array:
         k1 = h * np.array(ydot(y0, x0 + self.A[0] * h, *u_input), dtype=float)
         k2 = h * np.array(ydot(y0 + self.B[1, 0] * k1, x0 + self.A[1] * h, *u_input), dtype=float)
         k3 = h * np.array(ydot(y0 + self.B[2, 0] * k1 + self.B[2, 1] * k2, x0 + self.A[2] * h, *u_input), dtype=float)

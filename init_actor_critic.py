@@ -21,10 +21,15 @@ class ActorCritic(nn.Module):
         self.critic = nn.Sequential(
             nn.Linear(num_inputs, hidden_size),
             nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
             nn.Linear(hidden_size, 1)
+
         )
         self.actor = nn.Sequential(
             nn.Linear(num_inputs, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, num_outputs),
         )

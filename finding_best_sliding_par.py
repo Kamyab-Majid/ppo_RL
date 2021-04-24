@@ -4,6 +4,7 @@ import numpy as np
 from env.Helicopter import Helicopter
 from env.controller import Controller
 from finding_random_states_and_actions import state_finder
+import csv
 # my_data = np.genfromtxt('best_13_action_reward.csv', delimiter=',')
 my_state_finder = state_finder()
 my_heli = Helicopter()

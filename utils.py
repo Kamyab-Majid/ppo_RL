@@ -27,9 +27,7 @@ def plot(frame_idx, rewards):
 
 
 class save_files:
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         self.date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
         self.current_dir = os.getcwd()
         self.path_step_reward = "results/reward_step"
