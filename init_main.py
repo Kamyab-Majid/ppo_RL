@@ -60,18 +60,18 @@ for epoch in range(epochs):
     if epoch % 500 == 0:
         print("epoch {}, loss {}".format(epoch, loss.item()))
 
-with torch.no_grad():  # we don't need gradients in the testing phase
-    if torch.cuda.is_available():
-        predicted = model(Variable(torch.from_numpy(x_train).cuda())).cpu().data.numpy()
-    else:
-        predicted = model(Variable(torch.from_numpy(x_train))).data.numpy()
-    print(predicted)
+# with torch.no_grad():  # we don't need gradients in the testing phase
+#     if torch.cuda.is_available():
+#         predicted = model(Variable(torch.from_numpy(x_train).cuda())).cpu().data.numpy()
+#     else:
+#         predicted = model(Variable(torch.from_numpy(x_train))).data.numpy()
+#     print(predicted)
 
-plt.clf()
-plt.plot(x_train, y_train, "go", label="True data", alpha=0.5)
-plt.plot(x_train, predicted, "--", label="Predictions", alpha=0.5)
-plt.legend(loc="best")
-plt.show()
+# plt.clf()
+# plt.plot(x_train, y_train, "go", label="True data", alpha=0.5)
+# plt.plot(x_train, predicted, "--", label="Predictions", alpha=0.5)
+# plt.legend(loc="best")
+# plt.show()
 
 
 torch.save(model.state_dict(), "model.pt")

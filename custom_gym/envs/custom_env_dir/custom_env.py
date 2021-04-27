@@ -85,8 +85,10 @@ class CustomEnv(gym.Env, ABC):
 
     def action_wrapper(self, current_action) -> np.array:
         current_action = np.array(current_action)
+        current_action = current_action * (self.high_action_space - self.low_action_space) / 2 \
+            + (self.high_action_space + self.low_action_space) / 2 
         self.all_actions[self.counter] = self.control_input = \
-            np.clip(current_action, self.default_act_range[0], self.default_act_range[1])
+            np.clip(current_action, self.low_action_space, self.high_action_space)
 
     def find_next_state(self) -> list:
         current_t = self.dt * self.counter
