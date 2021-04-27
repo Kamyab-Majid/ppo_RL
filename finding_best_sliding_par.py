@@ -5,6 +5,7 @@ from env.Helicopter import Helicopter
 from env.controller import Controller
 from finding_random_states_and_actions import state_finder
 import csv
+
 # my_data = np.genfromtxt('best_13_action_reward.csv', delimiter=',')
 my_state_finder = state_finder()
 my_heli = Helicopter()
@@ -13,6 +14,7 @@ ENV_ID = "CustomEnv-v0"
 my_env = gym.make(ENV_ID)
 current_best_rew = -100000000000
 import numpy
+
 act_1 = numpy.linspace(0.1, 5.0, 10)
 act_2 = numpy.linspace(0.1, 5.0, 10)
 act_3 = numpy.linspace(5, 15, 10)
@@ -52,12 +54,30 @@ for i in range(len(act_1) - 1):
                                                 act12 = act_12[t]
                                                 for u in range(len(act_13) - 1):
                                                     act13 = act_13[u]
-                                                    sl_action = [act1,act2,act3,act4,act5,act6,act7,act8,act9,act10,act11,act12,act13]
+                                                    sl_action = [
+                                                        act1,
+                                                        act2,
+                                                        act3,
+                                                        act4,
+                                                        act5,
+                                                        act6,
+                                                        act7,
+                                                        act8,
+                                                        act9,
+                                                        act10,
+                                                        act11,
+                                                        act12,
+                                                        act13,
+                                                    ]
                                                     print(sl_action)
                                                     done = False
                                                     my_env.reset()
                                                     while not done:
-                                                        current_action = my_contr.Controller_model(my_env.current_states, my_env.dt * my_env.counter, action=sl_action)    
+                                                        current_action = my_contr.Controller_model(
+                                                            my_env.current_states,
+                                                            my_env.dt * my_env.counter,
+                                                            action=sl_action,
+                                                        )
                                                         my_env.current_states, b, done, _ = my_env.step(current_action)
                                                     if my_env.best_reward > current_best_rew:
                                                         current_best_rew = my_env.best_reward
@@ -65,12 +85,3 @@ for i in range(len(act_1) - 1):
                                                         with open("reward_step.csv", "a") as f:
                                                             writer = csv.writer(f)
                                                             writer.writerow(sl_action)
-                                                    
-                                                    
-                                                        
-
-
-
-
-
-
