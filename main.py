@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import torch
 import torch.optim as optim
-from utils import make_env, plot, save_files
+from utils import make_env, save_files
 from neural_network import ActorCritic
 from ppo_method import ppo
 from common.multiprocessing_env import SubprocVecEnv

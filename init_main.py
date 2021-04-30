@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.autograd import Variable
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from init_actor_critic import ActorCritic
 from finding_random_states_and_actions import state_finder
 
@@ -46,8 +46,6 @@ for epoch in range(epochs):
 
     # get output from the model, given the inputs
     outputs, value = model(inputs)
-
-
     # get loss for the predicted output
     loss = criterion(outputs, labels)
     if epoch % 500 == 0:

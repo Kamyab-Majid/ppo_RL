@@ -70,25 +70,27 @@ class CustomEnv(gym.Env, ABC):
         self.high_action_space = np.array(list(zip(*self.action_space_domain.values()))[1], dtype=np.float32)
         self.action_space = spaces.Box(low=self.low_action_space, high=self.high_action_space, dtype=np.float32)
         self.min_reward = -13
-        self.t_start, self.dt, self.t_end = 0, 0.005, 2
+        self.t_start, self.dt, self.t_end = 0, 0.03, 2
         self.no_timesteps = int((self.t_end - self.t_start) / self.dt)
         self.all_t = np.linspace(self.t_start, self.t_end, self.no_timesteps)
         self.counter = 0
         self.best_reward = -100_000_000
         self.longest_num_step = 0
-        self.reward_check_time = 0.7
+        self.reward_check_time = 0.7 * self.t_end
+        self.high_action_diff = 0.2
         obs_header = str(list(self.observation_space_domain.keys()))[1:-1]
         act_header = str(list(self.action_space_domain.keys()))[1:-1]
         self.header = "time, " + act_header + ", " + obs_header + ", reward" + ", control reward"
         self.saver = save_files()
         self.reward_array = np.array((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), dtype=np.float32)
 
-    def action_wrapper(self, current_action) -> np.array:
+    def action_wrapper(self, current_action: [-1, 1]) -> np.array:
         current_action = np.array(current_action)
-        current_action = current_action * (self.high_action_space - self.low_action_space) / 2 \
-            + (self.high_action_space + self.low_action_space) / 2 
-        self.all_actions[self.counter] = self.control_input = \
-            np.clip(current_action, self.low_action_space, self.high_action_space)
+        # current_action = current_action * (self.high_action_space - self.low_action_space) / 2 \
+        #  + (self.high_action_space + self.low_action_space) / 2
+        self.all_actions[self.counter] = self.control_input = np.clip(
+            current_action, self.low_action_space, self.high_action_space
+        )
 
     def find_next_state(self) -> list:
         current_t = self.dt * self.counter
@@ -104,45 +106,52 @@ class CustomEnv(gym.Env, ABC):
         self.all_obs[self.counter] = observation = list(self.current_states)
         return observation
 
-    def reward_function(self):
+    def reward_function(self) -> float:
         # add reward slope to the reward
         error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
         self.control_rewards[self.counter] = error
         for i in range(12):
             self.reward_array[i] = abs(self.current_states[i]) / self.default_range[1]
-        reward = self.all_rewards[self.counter] = -sum(self.reward_array) + 0.17 / self.default_range[1]
-        reward += 0.4 * (reward - self.all_rewards[self.counter - 1])  
-        return reward
+        reward = self.all_rewards[self.counter] = (
+            -sum(self.reward_array) + 0.17 / self.default_range[1]
+        )  # control reward
+        reward += 0.1 * float(
+            self.control_rewards[self.counter] - self.control_rewards[self.counter - 1]
+        )  # control slope
+        reward += -0.05 * sum(abs(self.all_actions[self.counter]))  # input reward
+        for i in (self.high_action_diff - self.all_actions[self.counter] - self.all_actions[self.counter - 1]) ** 2:
+            reward += -min(0, i)
+        return float(reward)
 
     def check_diverge(self) -> bool:
         if max(abs(self.current_states)) > self.default_range[1]:
-            print('state_diverge')
+            print("state_diverge")
             self.jj = 1
-            return True        
+            return True
         if self.counter >= self.no_timesteps - 1:  # number of timesteps
-            print('successful')
+            print("successful")
             return True
         # after self.reward_check_time it checks whether or not the reward is decreasing
         if self.counter > self.reward_check_time / self.dt:
-            if self.all_rewards[self.counter] - \
-                    self.all_rewards[int(self.counter - self.reward_check_time / self.dt)] < 0:
-                print('reward_diverge')
+            diverge_criteria = (
+                self.all_rewards[self.counter] - self.all_rewards[int(self.counter - self.reward_check_time / self.dt)]
+            )
+            if diverge_criteria < -0.001:
+                print("reward_diverge")
                 self.jj = 1
                 return True
         bool_1 = any(np.isnan(self.current_states))
         bool_2 = any(np.isinf(self.current_states))
         if bool_1 or bool_2:
             self.jj = 1
-            print('state_inf_nan_diverge')
-        return False           
+            print("state_inf_nan_diverge")
+        return False
 
     def done_jobs(self) -> None:
         current_num_step = self.counter
         current_total_reward = sum(self.all_rewards)
         if current_num_step > 10:
-            self.saver.reward_step_save(
-                self.best_reward, self.longest_num_step, current_total_reward, current_num_step
-            )
+            self.saver.reward_step_save(self.best_reward, self.longest_num_step, current_total_reward, current_num_step)
         if current_num_step >= self.longest_num_step:
             self.longest_num_step = current_num_step
         if current_total_reward > self.best_reward and sum(self.all_rewards) != 0:
@@ -167,7 +176,7 @@ class CustomEnv(gym.Env, ABC):
             self.done_jobs()
 
         self.counter += 1
-        return observation, float(reward), self.done, {}
+        return observation, reward, self.done, {}
 
     def reset(self):
         # initialization
@@ -179,24 +188,24 @@ class CustomEnv(gym.Env, ABC):
         self.jj = 0
         self.counter = 0
         # Yd, Ydotd, Ydotdotd, Y, Ydot = self.My_controller.Yposition(0, self.current_states)
-        self.current_states = [
-            1.42e-05,
-            7.31e-06,
-            4.29e-07,
-            -4.98e-06,
-            -5.02e-07,
-            1.70e-06,
-            -1.09e-01,
-            6.55e-07,
-            -7.89e-03,
-            -2.15e-03,
-            -9.05e-02,
-            -9.40e-02,
-            1.58e-09,
-            1.31e-09,
-            1.15e-07,
-            7.39e-07,
-        ]
+        self.current_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        #     3.70e-04,  # 0u
+        #     1.15e-02,  # 1v
+        #     4.36e-04,  # 2w
+        #     -5.08e-03,  # 3p
+        #     2.04e-04,  # 4q
+        #     2.66e-05,  # 5r
+        #     -1.08e-01,  # 6fi
+        #     1.01e-04,  # 7theta
+        #     -1.03e-03,  # 8si
+        #     -4.01e-05,  # 9x
+        #     -5.26e-02,  # 10y
+        #     -2.94e-04,  # 11z
+        #     -4.36e-06,  # 12a
+        #     -9.77e-07,  # 13b
+        #     -5.66e-05,  # 14c
+        #     7.81e-04,  # 15d
+        # ]
         self.all_obs[self.counter] = observation = self.current_states
         self.done = False
         return observation

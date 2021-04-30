@@ -1,17 +1,5 @@
-import math
-import random
-
-import gym
-import numpy as np
-import envs
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.distributions import Normal
-
-from IPython.display import clear_output
-import matplotlib.pyplot as plt
 
 
 class ActorCritic(nn.Module):
@@ -23,8 +11,7 @@ class ActorCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, 1)
-
+            nn.Linear(hidden_size, 1),
         )
         self.actor = nn.Sequential(
             nn.Linear(num_inputs, hidden_size),
@@ -32,7 +19,7 @@ class ActorCritic(nn.Module):
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, num_outputs),
-            nn.Tanh()
+            nn.Tanh(),
         )
         self.log_std = nn.Parameter(torch.ones(1, num_outputs) * std)
 
