@@ -21,8 +21,8 @@ device = torch.device("cuda" if use_cuda else "cpu")
 inputDim = 16  # takes variable 'x'
 outputDim = 4  # takes variable 'y'
 learningRate = 0.00001
-epochs = 200000
-hidden_size = 400
+epochs = 300000
+hidden_size = 1000
 model = ActorCritic(inputDim, outputDim, hidden_size).to(device)
 
 criterion = torch.nn.MSELoss()

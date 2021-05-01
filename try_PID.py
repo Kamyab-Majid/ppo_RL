@@ -54,4 +54,3 @@ for i in range((len(k_bin))):
             # with open("reward_step.csv", "a") as f:
             #     writer = csv.writer(f)
             #     writer.writerow(sl_action)
-
