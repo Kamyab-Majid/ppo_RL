@@ -33,7 +33,7 @@ class CustomEnv(gym.Env, ABC):
         self.My_controller = Controller()
         self.t = sp.symbols("t")
         self.symbolic_states_math, jacobian = self.My_helicopter.lambd_eq_maker(self.t, self.x_state, self.U_input)
-        self.default_range = default_range = (-20, 20)
+        self.default_range = default_range = (-200, 200)
         self.observation_space_domain = {
             "u_velocity": default_range,
             "v_velocity": default_range,
@@ -74,7 +74,7 @@ class CustomEnv(gym.Env, ABC):
         self.no_timesteps = int((self.t_end - self.t_start) / self.dt)
         self.all_t = np.linspace(self.t_start, self.t_end, self.no_timesteps)
         self.counter = 0
-        self.best_reward = -100_000_000
+        self.best_reward = float('-inf')
         self.longest_num_step = 0
         self.reward_check_time = 0.7 * self.t_end
         self.high_action_diff = 0.2
@@ -83,11 +83,43 @@ class CustomEnv(gym.Env, ABC):
         self.header = "time, " + act_header + ", " + obs_header + ", reward" + ", control reward"
         self.saver = save_files()
         self.reward_array = np.array((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), dtype=np.float32)
+        self.reward_limit = [
+            1.00e02,
+            3.40e03,
+            1.34e02,
+            1.51e03,
+            3.28e01,
+            7.78e00,
+            3.15e04,
+            3.09e01,
+            3.00e02,
+            8.46e00,
+            1.52e04,
+            9.27e01,
+        ]
+        self.constant_dict = {
+            "u": 1.,
+            "v": 1.,
+            "w": 0.,
+            "p": 0.,
+            "q": 0.,
+            "r": 0.,
+            "fi": 0.,
+            "theta": 0.,
+            "si": 0.,
+            "x": 1.,
+            "y": 1.,
+            "z": 0.,
+            "a": 0.,
+            "b": 0.,
+            "c": 0.,
+            "d": 0.,
+        }
 
     def action_wrapper(self, current_action: [-1, 1]) -> np.array:
         current_action = np.array(current_action)
-        # current_action = current_action * (self.high_action_space - self.low_action_space) / 2 \
-        #  + (self.high_action_space + self.low_action_space) / 2
+        current_action = current_action * (self.high_action_space - self.low_action_space) / 2 \
+            + (self.high_action_space + self.low_action_space) / 2
         self.all_actions[self.counter] = self.control_input = np.clip(
             current_action, self.low_action_space, self.high_action_space
         )
@@ -108,20 +140,21 @@ class CustomEnv(gym.Env, ABC):
 
     def reward_function(self) -> float:
         # add reward slope to the reward
+        # TODO: normalizing reward
+        # TODO: adding reward gap
         error = -np.linalg.norm((abs(self.current_states[0:12]).reshape(12)), 1)
         self.control_rewards[self.counter] = error
         for i in range(12):
             self.reward_array[i] = abs(self.current_states[i]) / self.default_range[1]
-        reward = self.all_rewards[self.counter] = (
-            -sum(self.reward_array) + 0.17 / self.default_range[1]
-        )  # control reward
-        reward += 0.1 * float(
+        reward = self.all_rewards[self.counter] = -sum(self.reward_array) + 0.17 / self.default_range[1]
+        # control reward
+        reward += 0.05 * float(
             self.control_rewards[self.counter] - self.control_rewards[self.counter - 1]
         )  # control slope
-        reward += -0.05 * sum(abs(self.all_actions[self.counter]))  # input reward
+        reward += -0.005 * sum(abs(self.all_actions[self.counter]))  # input reward
         for i in (self.high_action_diff - self.all_actions[self.counter] - self.all_actions[self.counter - 1]) ** 2:
             reward += -min(0, i)
-        return float(reward)
+        return reward
 
     def check_diverge(self) -> bool:
         if max(abs(self.current_states)) > self.default_range[1]:
@@ -133,10 +166,11 @@ class CustomEnv(gym.Env, ABC):
             return True
         # after self.reward_check_time it checks whether or not the reward is decreasing
         if self.counter > self.reward_check_time / self.dt:
+            prev_time = int(self.counter - self.reward_check_time / self.dt)
             diverge_criteria = (
-                self.all_rewards[self.counter] - self.all_rewards[int(self.counter - self.reward_check_time / self.dt)]
+                self.all_rewards[self.counter] - sum(self.all_rewards[prev_time:prev_time - 10]) / 10
             )
-            if diverge_criteria < -0.001:
+            if diverge_criteria < -1:
                 print("reward_diverge")
                 self.jj = 1
                 return True
@@ -154,10 +188,11 @@ class CustomEnv(gym.Env, ABC):
             self.saver.reward_step_save(self.best_reward, self.longest_num_step, current_total_reward, current_num_step)
         if current_num_step >= self.longest_num_step:
             self.longest_num_step = current_num_step
-        if current_total_reward > self.best_reward and sum(self.all_rewards) != 0:
+        if current_total_reward >= self.best_reward and sum(self.all_rewards) != 0:
             self.best_reward = sum(self.all_rewards)
+            ii = self.counter + 1
             self.saver.best_reward_save(
-                self.all_t, self.all_actions, self.all_obs, self.all_rewards, self.control_rewards, self.header
+                self.all_t[0:ii], self.all_actions[0:ii], self.all_obs[0:ii], self.all_rewards[0:ii], self.control_rewards[0:ii], self.header
             )
 
     def step(self, current_action):
@@ -176,6 +211,7 @@ class CustomEnv(gym.Env, ABC):
             self.done_jobs()
 
         self.counter += 1
+        self.make_constant(list(self.constant_dict.values()))
         return observation, reward, self.done, {}
 
     def reset(self):
@@ -188,24 +224,30 @@ class CustomEnv(gym.Env, ABC):
         self.jj = 0
         self.counter = 0
         # Yd, Ydotd, Ydotdotd, Y, Ydot = self.My_controller.Yposition(0, self.current_states)
-        self.current_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        #     3.70e-04,  # 0u
-        #     1.15e-02,  # 1v
-        #     4.36e-04,  # 2w
-        #     -5.08e-03,  # 3p
-        #     2.04e-04,  # 4q
-        #     2.66e-05,  # 5r
-        #     -1.08e-01,  # 6fi
-        #     1.01e-04,  # 7theta
-        #     -1.03e-03,  # 8si
-        #     -4.01e-05,  # 9x
-        #     -5.26e-02,  # 10y
-        #     -2.94e-04,  # 11z
-        #     -4.36e-06,  # 12a
-        #     -9.77e-07,  # 13b
-        #     -5.66e-05,  # 14c
-        #     7.81e-04,  # 15d
-        # ]
+        self.initial_states = [
+            3.70e-04,  # 0u
+            1.15e-02,  # 1v
+            4.36e-04,  # 2w
+            -5.08e-03,  # 3p
+            2.04e-04,  # 4q
+            2.66e-05,  # 5r
+            -1.08e-01,  # 6fi
+            1.01e-04,  # 7theta
+            -1.03e-03,  # 8si
+            -4.01e-05,  # 9x
+            -5.26e-02,  # 10y
+            -2.94e-04,  # 11z
+            -4.36e-06,  # 12a
+            -9.77e-07,  # 13b
+            -5.66e-05,  # 14c
+            7.81e-04]  # 15d
+        self.current_states = self.initial_states = list((np.random.rand(16) * 0.02 - 0.01))
+        # [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.all_obs[self.counter] = observation = self.current_states
         self.done = False
         return observation
+
+    def make_constant(self, true_list):
+        for i in range(len(true_list)):
+            if i == 1:
+                self.current_states[i] = self.initial_states[i]
