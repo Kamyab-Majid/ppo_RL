@@ -57,7 +57,6 @@ class save_files:
         )
 
     def reward_step_save(self, best_rew, longest_step, curr_tot_rew, curr_step):
-        print(f"best reward: {best_rew}, longest step: {longest_step}, reward: {curr_tot_rew}, step: {curr_step} ")
         fields = [self.index, curr_step, float(curr_tot_rew)]
         with open(f"{self.path_step_reward}/reward_step{self.date}.csv", "a") as f:
             writer = csv.writer(f)

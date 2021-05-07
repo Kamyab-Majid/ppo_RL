@@ -40,7 +40,7 @@ max_frames = 1_500_0000
 frame_idx = 0
 test_rewards = []
 save_iteration = 1000
-model_save_iteration = 30000
+model_save_iteration = 1000
 state = envs.reset()
 early_stop = False
 

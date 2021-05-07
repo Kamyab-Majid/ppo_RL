@@ -115,6 +115,7 @@ class CustomEnv(gym.Env, ABC):
             "c": 0.,
             "d": 0.,
         }
+        self.save_counter = 0
 
     def action_wrapper(self, current_action: [-1, 1]) -> np.array:
         current_action = np.array(current_action)
@@ -168,9 +169,9 @@ class CustomEnv(gym.Env, ABC):
         if self.counter > self.reward_check_time / self.dt:
             prev_time = int(self.counter - self.reward_check_time / self.dt)
             diverge_criteria = (
-                self.all_rewards[self.counter] - sum(self.all_rewards[prev_time:prev_time - 10]) / 10
+                self.all_rewards[self.counter] - sum(self.all_rewards[0:prev_time]) / self.counter
             )
-            if diverge_criteria < -1:
+            if diverge_criteria < -0.5:
                 print("reward_diverge")
                 self.jj = 1
                 return True
@@ -182,12 +183,14 @@ class CustomEnv(gym.Env, ABC):
         return False
 
     def done_jobs(self) -> None:
-        current_num_step = self.counter
+        counter = self.counter
+        self.save_counter += 1
         current_total_reward = sum(self.all_rewards)
-        if current_num_step > 10:
+        if self.save_counter > 10:
+            self.save_counter = 0
             self.saver.reward_step_save(self.best_reward, self.longest_num_step, current_total_reward, current_num_step)
-        if current_num_step >= self.longest_num_step:
-            self.longest_num_step = current_num_step
+        if counter >= self.longest_num_step:
+            self.longest_num_step = counter
         if current_total_reward >= self.best_reward and sum(self.all_rewards) != 0:
             self.best_reward = sum(self.all_rewards)
             ii = self.counter + 1
