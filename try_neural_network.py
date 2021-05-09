@@ -12,7 +12,7 @@ inputDim = 16  # takes variable 'x'
 outputDim = 4  # takes variable 'y'
 learningRate = 0.00001
 epochs = 200000
-hidden_size = 1000
+hidden_size = 400
 model = ActorCritic(inputDim, outputDim, hidden_size).to(device)
 
 model.load_state_dict(torch.load("model.pt"))
