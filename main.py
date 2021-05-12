@@ -24,7 +24,7 @@ num_inputs = envs.observation_space.shape[0]
 num_outputs = envs.action_space.shape[0]
 
 # Hyper params:
-hidden_size = 400
+hidden_size = 700
 lr = 3e-6
 num_steps = 20
 mini_batch_size = 5
@@ -36,11 +36,11 @@ env = gym.make(env_name)
 
 my_ppo = ppo(model, env)
 optimizer = optim.Adam(model.parameters(), lr=lr)
-max_frames = 1_500_0000
+max_frames = 1_000_000
 frame_idx = 0
 test_rewards = []
 save_iteration = 1000
-model_save_iteration = 1000
+model_save_iteration = max_frames / 50
 state = envs.reset()
 early_stop = False
 
@@ -66,7 +66,7 @@ while frame_idx < max_frames and not early_stop:
         state = trch_ft_device(state, device)
         dist, value = model(state)
 
-        action = dist.sample()
+        action = dist.sample() / (env.counter * env.dt * 10 + 1)
         next_state, reward, done, _ = envs.step(action.cpu().numpy())
 
         log_prob = dist.log_prob(action)

@@ -34,6 +34,7 @@ class CustomEnv(gym.Env, ABC):
         self.t = sp.symbols("t")
         self.symbolic_states_math, jacobian = self.My_helicopter.lambd_eq_maker(self.t, self.x_state, self.U_input)
         self.default_range = default_range = (-200, 200)
+        self.t_start, self.dt, self.t_end = 0, 0.03, 2
         self.observation_space_domain = {
             "u_velocity": default_range,
             "v_velocity": default_range,
@@ -51,6 +52,7 @@ class CustomEnv(gym.Env, ABC):
             "b_flapping": default_range,
             "c_flapping": default_range,
             "d_flapping": default_range,
+            "t": (self.t_start, self.t_end),
         }
         self.low_obs_space = np.array(list(zip(*self.observation_space_domain.values()))[0], dtype=np.float32)
         self.high_obs_space = np.array(list(zip(*self.observation_space_domain.values()))[1], dtype=np.float32)
@@ -70,7 +72,7 @@ class CustomEnv(gym.Env, ABC):
         self.high_action_space = np.array(list(zip(*self.action_space_domain.values()))[1], dtype=np.float32)
         self.action_space = spaces.Box(low=self.low_action_space, high=self.high_action_space, dtype=np.float32)
         self.min_reward = -13
-        self.t_start, self.dt, self.t_end = 0, 0.03, 2
+
         self.no_timesteps = int((self.t_end - self.t_start) / self.dt)
         self.all_t = np.linspace(self.t_start, self.t_end, self.no_timesteps)
         self.counter = 0
@@ -117,7 +119,7 @@ class CustomEnv(gym.Env, ABC):
         }
         self.save_counter = 0
 
-    def action_wrapper(self, current_action: [-1, 1]) -> np.array:
+    def action_wrapper(self, current_action) -> np.array:
         current_action = np.array(current_action)
         current_action = (
             current_action * (self.high_action_space - self.low_action_space) / 2
@@ -138,7 +140,7 @@ class CustomEnv(gym.Env, ABC):
         )
 
     def observation_function(self) -> list:
-        self.all_obs[self.counter] = observation = list(self.current_states)
+        self.all_obs[self.counter] = observation = list(np.append(self.current_states, self.counter * self.dt))
         return observation
 
     def reward_function(self) -> float:
@@ -213,6 +215,7 @@ class CustomEnv(gym.Env, ABC):
         self.done = self.check_diverge()
         if self.jj == 1:
             observation = list((self.all_obs[self.counter]) - self.default_range[0])
+            observation = np.append(observation, self.counter * self.dt)
             reward = self.min_reward
         if self.done:
             self.done_jobs()
@@ -251,7 +254,7 @@ class CustomEnv(gym.Env, ABC):
         ]  # 15d
         self.current_states = self.initial_states = list((np.random.rand(16) * 0.02 - 0.01))
         # [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.all_obs[self.counter] = observation = self.current_states
+        self.all_obs[self.counter] = observation = np.append(self.current_states, self.counter * self.dt)
         self.done = False
         return observation
 
